@@ -107,3 +107,7 @@ module.exports.scrapeAgeGender = async(page, userList, likeTargetCount) => {
   return info;
 }
 
+
+module.exports.randomTime = (min, max) => {
+  return Math.random() * (max - min) + min;
+}

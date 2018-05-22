@@ -49,69 +49,33 @@ async function scrapePosts(page, username, itemTargetCount) {
 }
 
 
-(async () => {
+module.exports.run = async (event, context, callback) => {
+  context.callbackWaitsForEmptyEventLoop = false;
 
   console.time('counting');
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   // const browser = await setup.getBrowser();
   const page = await browser.newPage();  
-  page.setViewport({width: 1200, height: 1000});
 
   if (savedCookie) {
-    //const cookies = JSON.parse(savedCookie);
-    await page.setCookie(...savedCookie);
+    const cookies = JSON.parse(savedCookie);
+    await page.setCookie(...cookies);
   } else {
-    // login and get cookies, todo: rotate account if needed
-
-    await page.goto('https://www.facebook.com');
-    await page.type('#email', 'trannguyenhung011086@yahoo.com');
-    await page.type('#pass', 'tr01ng10hu86');
-    await page.click(BUTTON_LOGIN_SELECTOR);
-    await page.waitForNavigation();
-    console.log('Login finish');
-    const cookies = await page.cookies();   
-
-    // todo: save the cookie somewhere to use later
-    // console.log(JSON.stringify(cookies));
+    // login and get cookies
   }
   
-  const username = "lehoanganhthyy"; // testing
-  const posts = await scrapePosts(page, username, MAX_NUMBER_POSTS)
-  console.log(posts);
+  const username = "ngoctrinhfashion89"; // testing
+  await scrapePosts(page, username)
 
   await browser.close();
   console.timeEnd('counting'); 
 
-})();
+  const response = {
+    success: true
+  }
+  callback(null, response);
 
-
-// module.exports.run = async (event, context, callback) => {
-//   context.callbackWaitsForEmptyEventLoop = false;
-
-//   console.time('counting');
-//   const browser = await puppeteer.launch({ headless: true });
-//   // const browser = await setup.getBrowser();
-//   const page = await browser.newPage();  
-
-//   if (savedCookie) {
-//     const cookies = JSON.parse(savedCookie);
-//     await page.setCookie(...cookies);
-//   } else {
-//     // login and get cookies
-//   }
-  
-//   const username = "ngoctrinhfashion89"; // testing
-//   await scrapePosts(page, username)
-
-//   await browser.close();
-//   console.timeEnd('counting'); 
-
-//   const response = {
-//     success: true
-//   }
-//   callback(null, response);
-
-// };
+};
 
 
 

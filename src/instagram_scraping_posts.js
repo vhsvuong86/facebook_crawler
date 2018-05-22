@@ -8,7 +8,7 @@ const puppeteer = require('puppeteer');
 const SELECT_LOGIN_SELECTOR = "._g9ean a";
 const BUTTON_LOGIN_SELECTOR = "button._qv64e";
 
-const SHORT_DELAY = 500;
+const SHORT_DELAY = 700;
 const MAX_NUMBER_POSTS = 48;
 const MAX_NUMBER_LIKES = 24;
 
@@ -103,7 +103,8 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
     // continue scrolling down
     previousHeight = await page.evaluate('document.body.scrollHeight');
     await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-    await page.waitFor(SHORT_DELAY);
+    const scrollDelay = utils.randomTime(700, 1000);
+    await page.waitFor(scrollDelay);
 
     currentHeight = await page.evaluate('document.body.scrollHeight');
     if (currentHeight == previousHeight) {
