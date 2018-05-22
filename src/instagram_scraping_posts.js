@@ -172,7 +172,8 @@ module.exports.run = async (event, context, callback) => {
     }
   });    
 
-  let info = await scrapePosts(page, posts, event.pathParameters.username, MAX_NUMBER_POSTS);
+  console.log("Received event: ", event)
+  let info = await scrapePosts(page, posts, event.user_name, MAX_NUMBER_POSTS);
   info.posts = posts;
 
   // console.log(posts.length);
@@ -191,15 +192,15 @@ module.exports.run = async (event, context, callback) => {
   // const final = calculateFinalResult(res, res2);
   // Object.assign(final, res);
 
-  const response = {
-    statusCode: 200,
-    body: JSON.stringify(info),
-  };
+  // const response = {
+  //   statusCode: 200,
+  //   body: JSON.stringify(info),
+  // };
 
   await browser.close();
   console.timeEnd('counting'); 
 
-  callback(null, response);
+  callback(null, info);
 };
 
 

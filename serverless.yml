@@ -32,12 +32,12 @@ resources:
 functions:
   instagram-scraping-posts:
     handler: src/instagram_scraping_posts.run
-    events:
-      - http:
-          path: instagram/{username}/posts
-          method: get
-          cors: 
-            origin: "*"
+    # events:
+    #   - http:
+    #       path: instagram/{username}/posts
+    #       method: get
+    #       cors: 
+    #         origin: "*"
 
 package:
   artifact: ./package.zip
