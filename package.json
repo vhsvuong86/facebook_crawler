@@ -1,0 +1,25 @@
+{
+  "name": "sns_crawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "scripts": {
+    "package": "npm run package-prepare && cp -r src dist && cp chrome/headless_shell.tar.gz dist && cd dist && zip -rq ../package.zip .",
+    "package-prepare": "rm -rf dist && mkdir dist && cp -r package.json dist && cd dist && PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1 npm install --production",
+    "local": "cp -r node_modules dist && node dist/starter-kit/local.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "puppeteer": "^1.4.0",
+    "request": "^2.86.0",
+    "request-promise": "^4.2.2",
+    "tar": "^4.4.2"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.243.1",
+    "serverless-hooks-plugin": "^1.1.0",
+    "serverless-offline": "^3.23.0"
+  }
+}

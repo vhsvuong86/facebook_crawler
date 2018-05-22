@@ -1,0 +1,52 @@
+service: casting-asia-sns-crawler
+
+provider:
+  name: aws
+  profile: ${opt:profile, 'default'}
+  stage: ${file(./stages/${opt:stage}.yaml):STAGE}
+  region: ${file(./stages/${opt:stage}.yaml):REGION}
+  runtime: nodejs8.10
+  role: arn:aws:iam::199811994466:role/casting-asia
+  memorySize: 1536
+  timeout: 300
+  endpointType: regional
+  logRetentionInDays: ${file(./stages/${opt:stage}.yaml):LOG_RETENTION}
+  versionFunctions: false
+  environment:
+    AZURE_FACE_API_SUBSCRIPTION_KEY: ${file(./stages/${opt:stage}.yaml):AZURE_FACE_API_SUBSCRIPTION_KEY}
+
+  # if needed (e.g. upload snapshot)
+  # iamRoleStatements:
+  #  -  Effect: "Allow"
+  #     Action:
+  #       - "s3:PutObject"
+  #     Resource: "arn:aws:s3:::<bucket name>/*"  
+
+resources:
+  Resources:
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: ${self:service}-${self:provider.stage}
+
+functions:
+  instagram-scraping-posts:
+    handler: src/instagram_scraping_posts.run
+    events:
+      - http:
+          path: instagram/{username}/posts
+          method: get
+          cors: 
+            origin: "*"
+
+package:
+  artifact: ./package.zip
+  
+plugins:
+  - serverless-hooks-plugin
+  - serverless-offline
+
+custom:
+  hooks:
+    package:initialize:
+      - npm run package
