@@ -156,7 +156,9 @@ module.exports.run = async (event, context, callback) => {
         // get posts ajax api
         const media = jsonData.data.user.edge_owner_to_timeline_media;
         for (let it of media.edges) {
-          posts.push(parsePostData(it));
+          if (it) {
+            posts.push(parsePostData(it));
+          }
         }
         //console.log("post list", media.edges.length);
       } else if (jsonData.data.shortcode_media && jsonData.data.shortcode_media.edge_liked_by) {
