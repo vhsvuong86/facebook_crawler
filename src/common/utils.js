@@ -3,7 +3,11 @@ const rp = require('request-promise');
 const LIKE_LINK_SELECTOR = "._nzn1h";
 const LIKE_LIST_SELECTOR = "._ms7sh";
 const SCROLL_DELAY = 500; // 0.5 second
-
+const CASTING_ASIA_API = 'https://dev-api.casting-asia.com';
+const CASTING_HEADERS = {
+  'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWR2ZXJ0aXNlciIsImV4cCI6MTgzMjA1MTgxNn0.PsISOdLsP7G8t0INLjZ2JeXP9NnaI01ye_wdI-Pd8nk',
+  'Content-Type': 'application/json',
+};
 
 module.exports.getBigInstagramImageUrl = async (user_id) => {
   const uri_base = `https://i.instagram.com/api/v1/users/${user_id}/info`;
@@ -43,23 +47,23 @@ module.exports.predictAgeGender = async (imageUrl) => {
     console.log("Getting face detect errors: " + e.message);
   }
 
-  return {};  
+  return {};
 };
 
-module.exports.simulateScroll = async(page, item, likeTargetCount) => {
+module.exports.simulateScroll = async (page, item, likeTargetCount) => {
   await page.goto(`https://www.instagram.com/p/${item.shortcode}`);
-  await page.waitForSelector(LIKE_LINK_SELECTOR, {visible:true});
+  await page.waitForSelector(LIKE_LINK_SELECTOR, {visible: true});
   await page.click(LIKE_LINK_SELECTOR);
 
   let previousHeight;
-  let currentHeight;  
+  let currentHeight;
 
-  await page.waitForSelector(LIKE_LIST_SELECTOR, {visible:true});
+  await page.waitForSelector(LIKE_LIST_SELECTOR, {visible: true});
   let times = parseInt((likeTargetCount - 24) / 12) + 1;
   // console.log("--times", times);
   // scroll down to get more likes, we get 24 likes each time scrolling
-  
-  while (times > 0) { 
+
+  while (times > 0) {
     // continue scrolling down
     previousHeight = await page.evaluate('document.querySelector("._ms7sh").scrollHeight');
     await page.evaluate(`document.querySelector("._ms7sh").scrollTop = ${previousHeight}`);
@@ -70,14 +74,14 @@ module.exports.simulateScroll = async(page, item, likeTargetCount) => {
       break; // nothing to get
     }
     times -= 1;
-  } 
-}
+  }
+};
 
-module.exports.scrapeAgeGender = async(page, userList, likeTargetCount) => {
+module.exports.scrapeAgeGender = async (page, userList, likeTargetCount) => {
   let picUrl;
   let data;
   let info = {
-    ages: [], 
+    ages: [],
     male: 0,
     female: 0
   };
@@ -93,10 +97,10 @@ module.exports.scrapeAgeGender = async(page, userList, likeTargetCount) => {
     if (data.age) {
       info.ages.push(data.age);
     }
-    if (data.gender == "male") info.male += 1;
-    if (data.gender == "female") info.female += 1;
+    if (data.gender === 'male') info.male += 1;
+    if (data.gender === 'female') info.female += 1;
 
-    if (counter % chunk == 0) {
+    if (counter % chunk === 0) {
       // prevent blocking
       await page.waitFor(SCROLL_DELAY);
       console.log("done batch");
@@ -105,9 +109,21 @@ module.exports.scrapeAgeGender = async(page, userList, likeTargetCount) => {
   }
   // console.log(info);
   return info;
-}
+};
 
 
 module.exports.randomTime = (min, max) => {
   return Math.random() * (max - min) + min;
-}
+};
+
+module.exports.fetch = async (url, body) => {
+  const options = {
+    method: 'GET',
+    uri: `${CASTING_ASIA_API}${url}`,
+    qs: {},
+    body,
+    json: true,
+    headers: CASTING_HEADERS,
+  };
+  return await rp(options);
+};

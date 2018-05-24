@@ -30,6 +30,14 @@ resources:
         Name: ${self:service}-${self:provider.stage}
 
 functions:
+  facebook_scraping:
+    handler: src/facebook_scraping.run
+    # events:
+    #  - http:
+    #      path: facebook
+    #      method: get
+    #      cors:
+    #        origin: "*"
   instagram-scraping-posts:
     handler: src/instagram_scraping_posts.run
     # events:
