@@ -38,7 +38,12 @@ async function getBasicInfo(page, fb_id) {
 
 async function getIntro(page) {
   const selector = 'li.fbTimelineUnit #intro_container_id';
-  await page.waitForSelector(selector, {visible: true, timeout: TIMEOUT});
+  try {
+    await page.waitForSelector(selector, {visible: true, timeout: TIMEOUT});
+  } catch (e) {
+    return {followers: 0};
+  }
+
   return page.evaluate(async (selector) => {
     const result = {followers: 0};
     try {
@@ -69,12 +74,17 @@ async function getProfilePicture(page) {
   const selector = `div.uiLayer`;
   const elm = await page.$('.photoContainer .profilePicThumb');
   elm && elm.click();
-  await page.waitForSelector(selector, {visible: true, timeout: TIMEOUT});
-  await page.waitForFunction(function () {
-    const image = document.querySelector('div.uiLayer img');
-    return image && image.src && !image.src.endsWith('.gif');
-  }, {timeout: TIMEOUT});
-  return await page.$eval('div.uiLayer img', e => e.src);
+  try {
+    await page.waitForSelector(selector, {visible: true, timeout: TIMEOUT});
+    await page.waitForFunction(function () {
+      const image = document.querySelector('div.uiLayer img');
+      return image && image.src && !image.src.endsWith('.gif');
+    }, {timeout: TIMEOUT});
+    return await page.$eval('div.uiLayer img', e => e.src);
+  } catch (e) {
+    return "";
+  }  
+
 }
 
 async function getProfileData(page, fbid) {
