@@ -1,81 +1,173 @@
-const savedCookie = [{"name":"fr","value":"0wYV1EvEacMCPldvi.AWULX4HO2_krkGauEfc1icSK-6E.BbA5Q8.77.FsD.0.0.BbA5RH.AWUw2sJp","domain":".facebook.com","path":"/","expires":1534737223.565506,"size":81,"httpOnly":true,"secure":true,"session":false},{"name":"presence","value":"EDvF3EtimeF1526961225EuserFA21B25087202053A2EstateFDutF1526961225653CEchFDp_5f1B25087202053F2CC","domain":".facebook.com","path":"/","expires":-1,"size":103,"httpOnly":false,"secure":true,"session":true},{"name":"pl","value":"n","domain":".facebook.com","path":"/","expires":1534737220.330497,"size":3,"httpOnly":true,"secure":true,"session":false},{"name":"xs","value":"6%3ACH6bDoddNiedbw%3A2%3A1526961220%3A19041%3A15662","domain":".facebook.com","path":"/","expires":1534737220.330305,"size":53,"httpOnly":true,"secure":true,"session":false},{"name":"datr","value":"PJQDW8cdzr-LcF18M2nJZSyN","domain":".facebook.com","path":"/","expires":1590033215.56493,"size":28,"httpOnly":true,"secure":true,"session":false},{"name":"c_user","value":"100025087202053","domain":".facebook.com","path":"/","expires":1534737220.330227,"size":21,"httpOnly":false,"secure":true,"session":false},{"name":"wd","value":"1200x1000","domain":".facebook.com","path":"/","expires":1527566023,"size":11,"httpOnly":false,"secure":true,"session":false},{"name":"sb","value":"PJQDWzQqhIOukAT51gPZnLSz","domain":".facebook.com","path":"/","expires":1590033220.330091,"size":26,"httpOnly":true,"secure":true,"session":false}];
-
+//const setup = require('./starter-kit/setup');
 const setup = require('./starter-kit/setup');
-const MAX_NUMBER_POSTS = 10;
+const utils = require('./common/utils');
 const puppeteer = require('puppeteer');
+const fb_cookie = require('./common/fb_cookie');
 
-const BUTTON_LOGIN_SELECTOR = 'input[data-testid=\'royal_login_button\']';
+const MAX_NUMBER_POSTS = 10;
+// const BUTTON_LOGIN_SELECTOR = 'input[data-testid=\'royal_login_button\']';
+const PATTERN = /^.*fbid=(\d+)&.*$/;
+const FIELD_MAPPING = {
+  'Gender': 'gender',
+  'Languages': 'language',
+  'Birthday': 'birthday',
+};
 
+// fields=id,cover,name,gender,birthday,about,picture.width(9999)
 
-function randomTime(min,max){
-  return Math.random() * (max - min) + min;
+function getPostId(url) {
+  const data = PATTERN.exec(url);
+  return data && data[1];
 }
 
-async function scrapePosts(page, username, itemTargetCount) {
-  await page.goto(`https://www.facebook.com/${username}`);
-  // console.log('Go to personal page');
-  await page.waitForSelector('#fb-timeline-cover-name',{visible:true});
-  // console.log('Start processing profile');
+async function getInfluencerInfo(id) {
+  return await utils.fetch(`/facebook_accounts?is_fanpage=eq.false&influencer_id=eq.${id}`);
+}
 
+async function getBasicInfo(page, fb_id) {
+  await page.goto(`https://www.facebook.com/${fb_id}/about?section=contact-info`);
+  // div to scroll
+  // #medley_header_friends
+  return await page.evaluate((FIELD_MAPPING) => {
+    const NAME_PATTERN = /(.*)\W<span.*/;
+    const result = {};
+    // name
+    const nameHtml = document.querySelector('#fb-timeline-cover-name a').innerHTML || '';
+    const groups = NAME_PATTERN.exec(nameHtml);
+    result['name'] = groups ? groups[1] : '';
+    // avatar
+    const avatar = document.querySelector('.profilePicThumb img');
+    result['avatar'] = avatar.getAttribute('src');
+    // cover
+    result['cover'] = document.querySelector('.coverPhotoImg').getAttribute('src');
+    // gender, language
+    document.querySelectorAll('.uiList li').forEach(elm => {
+      const spans = elm.querySelectorAll('span');
+      const texts = [...spans].map(span => span.innerText).filter(Boolean);
+      if (texts.length === 2 && texts[0] in FIELD_MAPPING) {
+        result[FIELD_MAPPING[texts[0]]] = texts[1];
+      }
+    });
+
+    return result;
+  }, FIELD_MAPPING);
+}
+
+async function scrape(page, itemTargetCount = 40, scrollDelay = 1000) {
   let items = [];
-
   try {
     let previousHeight;
-    
-    while (items.length < itemTargetCount) {       
-      items = await page.evaluate((username)=>{
-        const selectorString = `#recent_capsule_container div[id*='feed_subtitle'] a[href*='${username}'][href*='posts']`;
-        // console.log(selectorString);
-        const elements = document.querySelectorAll(selectorString);
-        console.log("List query elements: " + elements);
+    while (items.length < itemTargetCount) {
+      items = await page.evaluate(() => {
+        const elements = document.querySelectorAll('a[href*=\'fbid\']');
         const items = [];
         for (let element of elements) {
           items.push(element.href);
         }
         return items;
-      }, username);
+      });
       previousHeight = await page.evaluate('document.body.scrollHeight');
       await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
       await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
-      const scrollDelay = randomTime(500, 1000);
-      // console.log("Delay: " + scrollDelay);
       await page.waitFor(scrollDelay);
-      console.log('Get item number: ' + items.length);
     }
   } catch (e) {
-      console.log("Getting errors: " + e.message);
   }
-  return items;
+  return items.slice(0, itemTargetCount);
 }
 
+function getIntro(page) {
+  return page.evaluate(async () => {
+    const result = {
+      followers: 0,
+    };
+    return await new Promise((resolve) => {
+      const timer$ = setInterval(() => {
+        let timeLine = document.querySelector('li.fbTimelineUnit #intro_container_id');
+        if (timeLine) {
+          clearInterval(timer$);
+          const timeLineText = timeLine.innerText;
+          if (timeLineText) {
+            timeLineText.split('\n').forEach((item) => {
+              if (item.startsWith('From')) {
+                result['country'] = item.replace('From ', '');
+              }
+              if (item.startsWith('Followed by')) {
+                result['followers'] = item.replace(new RegExp('[Followed by|people|,]', 'g'), '').trim();
+              }
+            });
+            resolve(result);
+          }
+        }
+      }, 1000);
+    });
+  });
+}
+
+function getProfilePicture(page) {
+  return page.evaluate(async () => {
+    return await new Promise((resolve) => {
+      const elm = document.querySelector('.photoContainer .profilePicThumb');
+      if (elm) {
+        elm.click();
+      }
+      const timer$ = setInterval(() => {
+        let spotlight$ = document.querySelector('.spotlight');
+        if (spotlight$) {
+          const src = spotlight$.getAttribute('src');
+          if (src && src.search('.gif') === -1) {
+            resolve(src);
+            clearInterval(timer$);
+          }
+        }
+      }, 1000);
+    });
+  });
+}
+
+async function getProfileData(page, fbid) {
+  await page.goto(`https://www.facebook.com/${fbid}`, {waitUntil: 'networkidle2'});
+  const [picture, intro] = await Promise.all([getProfilePicture(page), getIntro(page)]);
+  return {...intro, picture};
+}
 
 module.exports.run = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
   console.time('counting');
-  const browser = await puppeteer.launch({ headless: true });
-  // const browser = await setup.getBrowser();
-  const page = await browser.newPage();  
+  const browser = await setup.getBrowser();
+  // const browser = await puppeteer.launch({headless: true});
 
-  if (savedCookie) {
-    const cookies = JSON.parse(savedCookie);
-    await page.setCookie(...cookies);
-  } else {
-    // login and get cookies
+  const [page, profilePage] = await Promise.all([browser.newPage(), browser.newPage()]);
+  page.setViewport({width: 1200, height: 1000});
+  profilePage.setViewport({width: 1200, height: 1000});
+
+  if (fb_cookie) { await page.setCookie(...fb_cookie); }
+
+  const [info] = await getInfluencerInfo(11317);
+  const fbid = info.fb_id;
+
+  const account = await Promise.all([getBasicInfo(page, fbid), getProfileData(profilePage, fbid)])
+    .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));
+
+  let birthday;
+  if (birthday = account['birthday']) {
+    account['birthday'] = new Date(birthday).toLocaleDateString('en-US');
   }
-  
-  const username = "ngoctrinhfashion89"; // testing
-  await scrapePosts(page, username)
+
+  let followers;
+  if (followers = account['followers']) {
+    account['followers'] = +followers;
+  }
 
   await browser.close();
-  console.timeEnd('counting'); 
 
-  const response = {
-    success: true
-  }
-  callback(null, response);
+  console.log(account);
+  console.timeEnd('counting');
 
+  callback(null, { statusCode: 200, body: JSON.stringify(account) });
 };
 
-
-
+// (async function() {
+//   await module.exports.run({}, {}, () => {});
+// })();
