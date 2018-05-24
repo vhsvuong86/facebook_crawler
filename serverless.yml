@@ -38,6 +38,8 @@ functions:
     #      method: get
     #      cors:
     #        origin: "*"
+  facebook_scraping_posts:
+    handler: src/facebook_scraping_posts.run
   instagram-scraping-posts:
     handler: src/instagram_scraping_posts.run
     # events:
