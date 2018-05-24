@@ -135,5 +135,7 @@ module.exports.run = async (event, context, callback) => {
 };
 
 // (async () => {
-//   module.exports.run(null, null, null);
+//   module.exports.run(null, null, function(status, response) {
+//     console.log(response);
+//   });
 // })();
