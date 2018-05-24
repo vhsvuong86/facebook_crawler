@@ -83,6 +83,12 @@ async function getProfileData(page, fbid) {
   return {...intro, picture};
 }
 
+module.exports.getFullUserInfo = async (page, fbid) => {
+  const basicInfo = await getBasicInfo(page, fbid);
+  const profile = await getProfileData(page, fbid);
+  return {...basicInfo, ...profile};
+}
+
 module.exports.run = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
@@ -123,7 +129,7 @@ module.exports.run = async (event, context, callback) => {
   callback(null, {statusCode: 200, body: JSON.stringify(account)});
 };
 
-(async function () {
-  await module.exports.run({}, {}, () => {
-  });
-})();
+// (async function () {
+//   await module.exports.run({}, {}, () => {
+//   });
+// })();
