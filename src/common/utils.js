@@ -134,7 +134,7 @@ module.exports.stripFbID = (url) => {
     return temp[1].split("&")[0];
   }
 
-  temp = url.split("fref=");
+  temp = url.split("?fref=");
   temp = temp[0].split("/");
   return temp.pop();
 };

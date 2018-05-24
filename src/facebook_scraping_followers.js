@@ -1,17 +1,21 @@
-const savedCookie = [{"name":"fr","value":"0wYV1EvEacMCPldvi.AWULX4HO2_krkGauEfc1icSK-6E.BbA5Q8.77.FsD.0.0.BbA5RH.AWUw2sJp","domain":".facebook.com","path":"/","expires":1534737223.565506,"size":81,"httpOnly":true,"secure":true,"session":false},{"name":"presence","value":"EDvF3EtimeF1526961225EuserFA21B25087202053A2EstateFDutF1526961225653CEchFDp_5f1B25087202053F2CC","domain":".facebook.com","path":"/","expires":-1,"size":103,"httpOnly":false,"secure":true,"session":true},{"name":"pl","value":"n","domain":".facebook.com","path":"/","expires":1534737220.330497,"size":3,"httpOnly":true,"secure":true,"session":false},{"name":"xs","value":"6%3ACH6bDoddNiedbw%3A2%3A1526961220%3A19041%3A15662","domain":".facebook.com","path":"/","expires":1534737220.330305,"size":53,"httpOnly":true,"secure":true,"session":false},{"name":"datr","value":"PJQDW8cdzr-LcF18M2nJZSyN","domain":".facebook.com","path":"/","expires":1590033215.56493,"size":28,"httpOnly":true,"secure":true,"session":false},{"name":"c_user","value":"100025087202053","domain":".facebook.com","path":"/","expires":1534737220.330227,"size":21,"httpOnly":false,"secure":true,"session":false},{"name":"wd","value":"1200x1000","domain":".facebook.com","path":"/","expires":1527566023,"size":11,"httpOnly":false,"secure":true,"session":false},{"name":"sb","value":"PJQDWzQqhIOukAT51gPZnLSz","domain":".facebook.com","path":"/","expires":1590033220.330091,"size":26,"httpOnly":true,"secure":true,"session":false}];
 
 const setup = require('./starter-kit/setup');
 const rp = require('request-promise');
 const utils = require('./common/utils');
+//const fb_cookie = require('./common/fb_cookie');
+const fb_rotate = require('./common/fb_rotate');
+const fb_scraping = require('./facebook_scraping');
 
-const MAX_NUMBER_USERS = 20;
+const MAX_NUMBER_USERS = 10;
+const MAX_NUMBER_POSTS = 10;
+const TIMEOUT = 3000;
 const LIKE_LINK_SELECTOR = "a[href*='reaction/profile']._2x4v";
 const REACTION_LIST_SELECTOR = "#reaction_profile_browser";
 
 
-process.env.CASTING_ASIA_AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWR2ZXJ0aXNlciIsImV4cCI6MTgzMjA1MTgxNn0.PsISOdLsP7G8t0INLjZ2JeXP9NnaI01ye_wdI-Pd8nk";
-process.env.CASTING_ASIA_API = "https://dev-api.casting-asia.com";
-const puppeteer = require('puppeteer');
+// process.env.CASTING_ASIA_AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWR2ZXJ0aXNlciIsImV4cCI6MTgzMjA1MTgxNn0.PsISOdLsP7G8t0INLjZ2JeXP9NnaI01ye_wdI-Pd8nk";
+// process.env.CASTING_ASIA_API = "https://dev-api.casting-asia.com";
+// const puppeteer = require('puppeteer');
 
 
 async function getFacebookPosts(fb_account_id) {
@@ -20,7 +24,7 @@ async function getFacebookPosts(fb_account_id) {
     'Content-Type': 'application/json',
     'Prefer': 'return=representation'
   };
-  const request_uri = `${process.env.CASTING_ASIA_API}/facebook_posts?select=fb_id&facebook_account_id=eq.${fb_account_id}`;
+  const request_uri = `${process.env.CASTING_ASIA_API}/facebook_posts?order=created.desc&limit=${MAX_NUMBER_POSTS}&select=fb_id&facebook_account_id=eq.${fb_account_id}`;
   const options = {
     method: 'GET',
     headers: casting_asia_headers,
@@ -36,25 +40,24 @@ async function getFacebookPosts(fb_account_id) {
   }  
 }
 
-async function scrapeUserProfile(fid) {
-  return {
-    gender: "female",
-    age: 19,
-    address: "Vietnam",
-    fb_id: fid
-  }
+function normalizeProfileData(data, fb_account_id, fb_id) {
+  data.facebook_account_id = fb_account_id;
+  data.fb_id = fb_id;
+  return data;
 }
 
-async function scrapeUsersEachPost(page, users, post_id) {
+async function scrapeUsersEachPost(page, users, post_id, fb_account_id) {
   const temp = post_id.split("_");
   await page.goto(`https://www.facebook.com/${temp[0]}/posts/${temp[1]}`);
   try {
-    await page.waitForSelector('.UFIList', {visible:true, timeout: 5000});
+    await page.waitForSelector('.UFIList', {visible:true, timeout: TIMEOUT});
     await page.click(LIKE_LINK_SELECTOR);
-    await page.waitForSelector(REACTION_LIST_SELECTOR, {visible:true, timeout: 5000});    
+    await page.waitForSelector(REACTION_LIST_SELECTOR, {visible:true, timeout: TIMEOUT});    
   } catch (e) {
     return users;
   }
+
+  await page.waitFor(utils.randomTime(100, 2000));
 
   const selector = `${REACTION_LIST_SELECTOR} a._5i_s`;
   const items = await page.evaluate((selector, limitUsers)=>{
@@ -67,49 +70,70 @@ async function scrapeUsersEachPost(page, users, post_id) {
     return items;
   }, selector, MAX_NUMBER_USERS);
 
+  // console.log("start users scraping");
   for (let item of items) {
-    const fid = utils.stripFbID(item);
-    if (users[fid]) {
+    const fb_id = utils.stripFbID(item);
+    if (users[fb_id]) {
       continue;
     }
-    users[fid] = await scrapeUserProfile(fid);
+    console.log("user id: ", fb_id);
+    let profile = await fb_scraping.getFullUserInfo(page, fb_id);
+    await page.waitFor(utils.randomTime(100, 1000));
+    // normalize profile data
+    users[fb_id] = normalizeProfileData(profile, fb_account_id, fb_id);
   }
   return users;
 }
 
+
+async function updateCookie(page, rotate_index = 0) {
+  const temp = fb_rotate.getCookieInfo(rotate_index);
+
+  await page.setCookie(...temp[1].cookie);
+  await page.setUserAgent(temp[1].agent);  
+
+  return temp[0];
+}
 
 module.exports.run = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
   console.time('counting');
   const browser = await setup.getBrowser();
+  // const browser = await puppeteer.launch({headless: false});
   const page = await browser.newPage();
   page.setViewport({width: 1200, height: 1000});
 
-  if (savedCookie) {
-    await page.setCookie(...savedCookie);
-  }
+  let rotate_index = 0;
+  //if (fb_cookie) { await page.setCookie(...fb_cookie); }
 
   let users = {};
-  const posts = await getFacebookPosts(8322);
-  //const posts = await getFacebookPosts(event.facebook_account_id);
+  // const fb_account_id = 8323;
+  const fb_account_id = event.facebook_account_id
+  const posts = await getFacebookPosts(fb_account_id);
   console.log("Finish getting facebook posts");
 
-  for (let post in posts) {
-    users = await scrapeUsersEachPost(page, users, post.fb_id);
+  for (let post of posts) {
+    console.log(post);
+    rotate_index = await updateCookie(page, rotate_index);
+    users = await scrapeUsersEachPost(page, users, post.fb_id, fb_account_id);
+    console.log("done one post");
+    await page.waitFor(utils.randomTime(100, 2000));
   }
   users = Object.values(users);
+  // console.log(users);
 
   const response = {
     followers: users
-  }
+  };
 
   await browser.close();
   console.timeEnd('counting');
 
-  //callback(null, response);
+  //callback(null, { statusCode: 200, body: JSON.stringify(response) });
+  callback(null, response);
 };
 
-(async () => {
-  module.exports.run(null, null, null);
-})();
+// (async () => {
+//   module.exports.run(null, null, null);
+// })();
