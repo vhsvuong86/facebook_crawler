@@ -14,7 +14,8 @@ provider:
   versionFunctions: false
   environment:
     AZURE_FACE_API_SUBSCRIPTION_KEY: ${file(./stages/${opt:stage}.yaml):AZURE_FACE_API_SUBSCRIPTION_KEY}
-
+    CASTING_ASIA_AUTHORIZATION: ${file(./stages/${opt:stage}.yaml):CASTING_ASIA_AUTHORIZATION}
+    
   # if needed (e.g. upload snapshot)
   # iamRoleStatements:
   #  -  Effect: "Allow"
@@ -48,6 +49,9 @@ functions:
     #       method: get
     #       cors: 
     #         origin: "*"
+  facebook-scraping-followers:
+    handler: src/facebook_scraping_followers.run
+
 
 package:
   artifact: ./package.zip

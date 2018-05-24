@@ -127,3 +127,15 @@ module.exports.fetch = async (url, body) => {
   };
   return await rp(options);
 };
+
+module.exports.stripFbID = (url) => {
+  let temp = url.split("id=");
+  if (temp.length == 2) {
+    return temp[1].split("&")[0];
+  }
+
+  temp = url.split("fref=");
+  temp = temp[0].split("/");
+  return temp.pop();
+};
+
