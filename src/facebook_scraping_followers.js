@@ -48,9 +48,12 @@ async function normalizeProfileData(data, fb_account_id, fb_id) {
     data.gender = data.gender.toLowerCase() == 'male' ? 2 : 1;
   }
   if (data.birthday) {
+    // check if birthday having year
     try {
-      const timediff = +(new Date()) - +(new Date(data.birthday));
-      data.age = parseInt(timediff / (1000*3600*24*365));
+      if (data.birthday.split(" ").length == 3) {
+        const timediff = +(new Date()) - +(new Date(data.birthday));
+        data.age = parseInt(timediff / (1000*3600*24*365));        
+      }
     } catch (e) {
       console.log("Getting errors: " + e.message);
     }
