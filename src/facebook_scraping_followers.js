@@ -43,6 +43,18 @@ async function getFacebookPosts(fb_account_id) {
 function normalizeProfileData(data, fb_account_id, fb_id) {
   data.facebook_account_id = fb_account_id;
   data.fb_id = fb_id;
+
+  if (data.gender) {
+    data.gender = data.gender.toLowerCase() == 'male' ? 2 : 1;
+  }
+  if (data.birthday) {
+    try {
+      const timediff = +(new Date()) - +(new Date(data.birthday));
+      data.age = parseInt(timediff / (1000*3600*24*365));
+    } catch (e) {
+      console.log("Getting errors: " + e.message);
+    }
+  }
   return data;
 }
 
@@ -131,7 +143,7 @@ module.exports.run = async (event, context, callback) => {
     rotate_index = await updateCookie(page, rotate_index);
     users = await scrapeUsersEachPost(page, users, post, fb_account_id);
     console.log("done post", post);
-    // await page.waitFor(utils.randomTime(100, 2000));
+    await page.waitFor(utils.randomTime(100, 1000));
   }
   // users = Object.values(users);
   // console.log(users);

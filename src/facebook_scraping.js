@@ -16,22 +16,31 @@ async function getBasicInfo(page, fb_id) {
   await page.goto(`https://www.facebook.com/${fb_id}/about?section=contact-info`);
   return await page.evaluate((FIELD_MAPPING) => {
     const result = {};
-    // name
-    result['name'] = document.querySelector('#fb-timeline-cover-name a').innerText;
-    // avatar
-    const avatar = document.querySelector('.profilePicThumb img');
-    result['avatar'] = avatar.getAttribute('src');
-    // cover
-    result['cover'] = document.querySelector('.coverPhotoImg').getAttribute('src');
-    // gender, language
-    document.querySelectorAll('.uiList li').forEach(elm => {
-      const spans = elm.querySelectorAll('span');
-      const texts = [...spans].map(span => span.innerText).filter(Boolean);
-      if (texts.length === 2 && texts[0] in FIELD_MAPPING) {
-        result[FIELD_MAPPING[texts[0]]] = texts[1];
+    try {
+      // name
+      result['name'] = document.querySelector('#fb-timeline-cover-name a').innerText;
+      // avatar
+      const avatar = document.querySelector('.profilePicThumb img');
+      if (avatar) {
+        result['avatar'] = avatar.getAttribute('src');
       }
-    });
 
+      // cover
+      const cover = document.querySelector('.coverPhotoImg');
+      if (cover) {
+        result['cover'] = cover.getAttribute('src');
+      }
+
+      // gender, language
+      document.querySelectorAll('.uiList li').forEach(elm => {
+        const spans = elm.querySelectorAll('span');
+        const texts = [...spans].map(span => span.innerText).filter(Boolean);
+        if (texts.length === 2 && texts[0] in FIELD_MAPPING) {
+          result[FIELD_MAPPING[texts[0]]] = texts[1];
+        }
+      });
+    } catch (e) { }
+    
     return result;
   }, FIELD_MAPPING);
 }
@@ -123,7 +132,7 @@ module.exports.run = async (event, context, callback) => {
 
   let birthday;
   if (birthday = account['birthday']) {
-    account['birthday'] = new Date(birthday).toLocaleDateString('en-US');
+    account['birthday'] = +(new Date(birthday));
   }
 
   let followers;
