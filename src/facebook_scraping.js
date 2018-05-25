@@ -24,13 +24,11 @@ async function getBasicInfo(page, fb_id) {
       if (avatar) {
         result['avatar'] = avatar.getAttribute('src');
       }
-
       // cover
       const cover = document.querySelector('.coverPhotoImg');
       if (cover) {
-        result['cover'] = cover.getAttribute('src');
+        result['cover'] = cover.src;
       }
-
       // gender, language
       document.querySelectorAll('.uiList li').forEach(elm => {
         const spans = elm.querySelectorAll('span');
@@ -39,6 +37,13 @@ async function getBasicInfo(page, fb_id) {
           result[FIELD_MAPPING[texts[0]]] = texts[1];
         }
       });
+      // FIXME: in case no gender
+      const genderElm = document.querySelector('._Interaction__ProfileSectionPlaces span');
+      if (genderElm) {
+        let res = /(s?he)/i.exec(genderElm.innerText);
+        console.log(res);
+        result['gender'] = res ? (res[1].toLowerCase() === 'he' ? 'Male' : 'Female') : '';
+      }
     } catch (e) { }
     
     return result;
@@ -106,7 +111,7 @@ module.exports.getFullUserInfo = async (page, fbid) => {
   const basicInfo = await getBasicInfo(page, fbid);
   const profile = await getProfileData(page, fbid);
   return {...basicInfo, ...profile};
-}
+};
 
 module.exports.run = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
@@ -125,7 +130,7 @@ module.exports.run = async (event, context, callback) => {
 
   const [info] = await fb_utils.getInfluencerInfo(11335);
   // const fbid = info.fb_id;
-  const fbid = 'tantoan.nguyenle';
+  const fbid = 'linhchiibi19';
 
   const account = await Promise.all([getBasicInfo(page, fbid), getProfileData(profilePage, fbid)])
     .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));
@@ -140,7 +145,7 @@ module.exports.run = async (event, context, callback) => {
     account['followers'] = +followers;
   }
 
-  // await browser.close();
+  await browser.close();
 
   console.log(account);
   console.timeEnd('counting');
@@ -148,7 +153,6 @@ module.exports.run = async (event, context, callback) => {
   callback(null, {statusCode: 200, body: JSON.stringify(account)});
 };
 
-// (async function () {
-//   await module.exports.run({}, {}, () => {
-//   });
-// })();
+/*(async function () {
+  await module.exports.run({}, {}, () => {});
+})();*/
