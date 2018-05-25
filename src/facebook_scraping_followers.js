@@ -32,8 +32,7 @@ async function getFacebookPosts(fb_account_id) {
     uri: request_uri
   };
   try {
-    const response = await rp(options);
-    return response;
+    return await rp(options);
   } catch (e) {
     console.log("Getting errors: " + e.message);
     return [];
