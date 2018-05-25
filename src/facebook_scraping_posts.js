@@ -195,6 +195,17 @@ async function getPostDetail(page, postId) {
     });
 }
 
+module.exports.getPosts = async function(page, fbid, num_posts) {
+  let postIds = await scrape(page, fbid, num_posts || MAX_NUMBER_POSTS);
+  postIds = postIds.map(getPostId);
+  const result = [];
+  for (let i = 0; i < postIds.length; i++) {
+    let post = await getPostDetail(page, postIds[i]);
+    result.push(post);
+  }
+  return result;
+};
+
 module.exports.run = async (event, context, callback) => {
   process.setMaxListeners(Infinity);
   context.callbackWaitsForEmptyEventLoop = false;
@@ -207,23 +218,11 @@ module.exports.run = async (event, context, callback) => {
     await page.setCookie(...fb_cookie);
   }
 
-  const fbid = 'linhchiibi19';
-  const items = await scrape(page, fbid, MAX_NUMBER_POSTS);
-  const postIds = items.map(getPostId);
-  console.log(items);
-
-  const result = [];
-  for (let i = 0; i < postIds.length; i++) {
-    let post = await getPostDetail(page, postIds[i]);
-    result.push(post);
-  }
-  console.log(result);
-
   await browser.close();
   console.timeEnd('counting');
-  // callback(null, {statusCode: 200, body: JSON.stringify(data)});
+
 };
 
-(async function () {
-  await module.exports.run({}, {}, () => {});
-})();
+// (async function () {
+//   await module.exports.run({}, {}, () => {});
+// })();

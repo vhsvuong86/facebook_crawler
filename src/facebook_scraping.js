@@ -3,6 +3,7 @@ const setup = require('./starter-kit/setup');
 const puppeteer = require('puppeteer');
 const fb_cookie = require('./common/fb_cookie');
 const fb_utils = require('./common/fb_utils');
+const fb_posts = require('./facebook_scraping_posts');
 const TIMEOUT = 3000;
 
 const FIELD_MAPPING = {
@@ -114,25 +115,34 @@ module.exports.getFullUserInfo = async (page, fbid) => {
 };
 
 module.exports.run = async (event, context, callback) => {
+
+  /**
+   * {
+      "influencer_id": 11359,
+      "timestamp_last_post_in_db": 0,
+      "num_posts": 50,
+      "name": "1933968613588809",
+      "fb_token": null,
+      "followers_limit": 300
+    }
+   */
+
   context.callbackWaitsForEmptyEventLoop = false;
+  process.setMaxListeners(Infinity);
+
+  const fbid = event.name;
 
   console.time('counting');
   // const browser = await setup.getBrowser();
   const browser = await puppeteer.launch({headless: false});
-
-  const [page, profilePage] = await Promise.all([browser.newPage(), browser.newPage()]);
-  page.setViewport({width: 1200, height: 1000});
-  profilePage.setViewport({width: 1200, height: 1000});
-
+  const page = await browser.newPage();
   if (fb_cookie) {
     await page.setCookie(...fb_cookie);
   }
-
-  const [info] = await fb_utils.getInfluencerInfo(11335);
-  // const fbid = info.fb_id;
-  const fbid = 'linhchiibi19';
-
-  const account = await Promise.all([getBasicInfo(page, fbid), getProfileData(profilePage, fbid)])
+  let account = await Promise.all([
+    getBasicInfo(page, fbid),
+    getProfileData(page, fbid)
+  ])
     .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));
 
   let birthday;
@@ -144,15 +154,31 @@ module.exports.run = async (event, context, callback) => {
   if (followers = account['followers']) {
     account['followers'] = +followers;
   }
+  account = { ...account, ...event };
+
+  account['posts'] = await fb_posts.getPosts(page, fbid);
+  account['user_name'] = fbid;
 
   await browser.close();
-
-  console.log(account);
   console.timeEnd('counting');
 
-  callback(null, {statusCode: 200, body: JSON.stringify(account)});
+  console.log(account);
+
+  callback(null, account);
+
 };
 
-/*(async function () {
-  await module.exports.run({}, {}, () => {});
-})();*/
+const params = {
+  'influencer_id': 11335,
+  'timestamp_last_post_in_db': 0,
+  'num_posts': 50,
+  'name': 'boon.trang.1',
+  'fb_token': null,
+  'followers_limit': 300,
+};
+
+(async function () {
+  await module.exports.run(params, {}, (data) => {
+    console.log(data);
+  });
+})();
