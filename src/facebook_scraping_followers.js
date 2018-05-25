@@ -7,7 +7,7 @@ const fb_rotate = require('./common/fb_rotate');
 const fb_scraping = require('./facebook_scraping');
 
 const MAX_NUMBER_USERS = 10;
-const MAX_NUMBER_POSTS = 5;
+const MAX_NUMBER_POSTS = 10;
 const TIMEOUT = 3000;
 const LIKE_LINK_SELECTOR = "a[href*='reaction/profile']._2x4v";
 const REACTION_LIST_SELECTOR = "#reaction_profile_browser";
@@ -107,9 +107,16 @@ module.exports.run = async (event, context, callback) => {
   let rotate_index = 0;
   //if (fb_cookie) { await page.setCookie(...fb_cookie); }
 
-  let users = {};
-  let posts = event.posts;
+  let users = event.followers || {};
   const fb_account_id = event.facebook_account_id;
+
+  let posts;
+  const post = event.post;
+  if (post) {
+    posts = [post];
+  } else {
+    posts = event.posts;
+  }
 
   if (!posts) {
     // const fb_account_id = 8323;
@@ -124,9 +131,9 @@ module.exports.run = async (event, context, callback) => {
     rotate_index = await updateCookie(page, rotate_index);
     users = await scrapeUsersEachPost(page, users, post, fb_account_id);
     console.log("done post", post);
-    await page.waitFor(utils.randomTime(100, 2000));
+    // await page.waitFor(utils.randomTime(100, 2000));
   }
-  users = Object.values(users);
+  // users = Object.values(users);
   // console.log(users);
 
   const response = {
