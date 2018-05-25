@@ -40,7 +40,7 @@ async function getFacebookPosts(fb_account_id) {
   }  
 }
 
-function normalizeProfileData(data, fb_account_id, fb_id) {
+async function normalizeProfileData(data, fb_account_id, fb_id) {
   data.facebook_account_id = fb_account_id;
   data.fb_id = fb_id;
 
@@ -55,6 +55,18 @@ function normalizeProfileData(data, fb_account_id, fb_id) {
       console.log("Getting errors: " + e.message);
     }
   }
+
+  if (!data.age && data.avatar) {
+    // do not have age, call azure service
+    const predictData = await utils.predictAgeGender(data.avatar);
+    if (predictData) {
+      data.age = predictData.age;
+      if (!data.gender) {
+        data.gender = predictData.gender == "male" ? 2 : 1;
+      }
+    }
+  }
+
   return data;
 }
 
@@ -90,9 +102,9 @@ async function scrapeUsersEachPost(page, users, post_id, fb_account_id) {
     }
     console.log("user id: ", fb_id);
     let profile = await fb_scraping.getFullUserInfo(page, fb_id);
-    await page.waitFor(utils.randomTime(100, 1000));
+    await page.waitFor(utils.randomTime(100, 500));
     // normalize profile data
-    users[fb_id] = normalizeProfileData(profile, fb_account_id, fb_id);
+    users[fb_id] = await normalizeProfileData(profile, fb_account_id, fb_id);
   }
   return users;
 }
@@ -160,7 +172,11 @@ module.exports.run = async (event, context, callback) => {
 };
 
 // (async () => {
-//   module.exports.run(null, null, function(status, response) {
-//     console.log(response);
-//   });
+//   process.env.AZURE_FACE_API_SUBSCRIPTION_KEY = "c24d9924fec34a7594f412a911c39ae8";
+//   const test = {"avatar": "https://scontent.fsgn5-1.fna.fbcdn.net/v/t1.0-9/31655534_360061001153204_7979231624518696960_n.jpg?_nc_cat=0&oh=6bf51909534bb07bb431e8c0b4772e22&oe=5B89327D"};
+//   const data = await normalizeProfileData(test, null, null);
+//   console.log(data);
+//   // module.exports.run(null, null, function(status, response) {
+//   //   console.log(response);
+//   // });
 // })();

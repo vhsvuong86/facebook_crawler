@@ -17,7 +17,7 @@ module.exports.getBigInstagramImageUrl = async (user_id) => {
 
 module.exports.predictAgeGender = async (imageUrl) => {
   if (!imageUrl) {
-    return {};
+    return null;
   }
 
   // can have issue "RateLimitExceeded"
@@ -47,7 +47,7 @@ module.exports.predictAgeGender = async (imageUrl) => {
     console.log("Getting face detect errors: " + e.message);
   }
 
-  return {};
+  return null;
 };
 
 module.exports.simulateScroll = async (page, item, likeTargetCount) => {
