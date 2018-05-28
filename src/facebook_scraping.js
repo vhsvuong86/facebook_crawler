@@ -5,6 +5,7 @@ const fb_cookie = require('./common/fb_cookie');
 const fb_utils = require('./common/fb_utils');
 const fb_posts = require('./facebook_scraping_posts');
 const TIMEOUT = 5000;
+const MAX_NUMBER_POSTS = 10;
 
 const FIELD_MAPPING = {
   'Gender': 'gender',
@@ -21,7 +22,7 @@ async function getBasicInfo(page, fb_id) {
     result['cover'] = null;
   } catch (e) {
     // cover
-    result['cover'] = page.$eval('.coverPhotoImg', e => e.src);
+    result['cover'] = await page.$eval('.coverPhotoImg', e => e.src);
   }
 
   const info = await page.evaluate((FIELD_MAPPING) => {
@@ -62,6 +63,10 @@ async function getBasicInfo(page, fb_id) {
     }
     return result;
   }, FIELD_MAPPING);
+
+  if (info.gender) {
+    info.gender = info.gender.toLowerCase() == 'male' ? 2 : 1;
+  }
 
   return {...result, ...info};
 
@@ -177,7 +182,7 @@ module.exports.run = async (event, context, callback) => {
   }
   account = { ...event, ... account };
 
-  account['posts'] = await fb_posts.getPosts(page, fbid, 1);
+  account['posts'] = await fb_posts.getPosts(page, fbid, MAX_NUMBER_POSTS);
   if (account['posts'].length) {
     account['posts'] = account['posts'].map(post => {
       return {...post, fb_id: `${account['fb_id']}_${post['fb_id']}`};
@@ -185,9 +190,9 @@ module.exports.run = async (event, context, callback) => {
   }
 
   account['user_name'] = fbid;
-  account['fb_id'] = fbid;
+  //account['fb_id'] = fbid;
 
-  // await browser.close();
+  await browser.close();
   console.timeEnd('counting');
   console.log(account);
 

@@ -1,5 +1,6 @@
 const fb_cookie = require('./common/fb_cookie');
 const puppeteer = require('puppeteer');
+const utils = require('./common/utils');
 
 const MAX_NUMBER_POSTS = 10;
 // const PATTERN = /^.*(?:post\/)?(\d+)&.*$/;
@@ -25,7 +26,7 @@ function getPostId(url) {
   return data && data[1];
 }
 
-async function scrape(page, fbid, itemTargetCount = 40, scrollDelay = 1000) {
+async function scrape(page, fbid, itemTargetCount = 40) {
   await page.goto(`https://www.facebook.com/${fbid}`);
   let items = [];
   try {
@@ -46,7 +47,7 @@ async function scrape(page, fbid, itemTargetCount = 40, scrollDelay = 1000) {
       previousHeight = await page.evaluate('document.body.scrollHeight');
       await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
       await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
-      await page.waitFor(scrollDelay);
+      await page.waitFor(utils.randomTime(1200, 2000));
     }
   } catch (e) {
   }

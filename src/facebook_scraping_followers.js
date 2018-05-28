@@ -43,9 +43,9 @@ async function normalizeProfileData(data, fb_account_id, fb_user_id) {
   data.facebook_account_id = fb_account_id;
   data.fb_id = fb_user_id;
 
-  if (data.gender) {
-    data.gender = data.gender.toLowerCase() == 'male' ? 2 : 1;
-  }
+  // if (data.gender) {
+  //   data.gender = data.gender.toLowerCase() == 'male' ? 2 : 1;
+  // }
   if (data.birthday) {
     // check if birthday having year
     try {
