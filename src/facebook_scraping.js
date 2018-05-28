@@ -15,20 +15,32 @@ const FIELD_MAPPING = {
 
 async function getBasicInfo(page, fb_id) {
   await page.goto(`https://www.facebook.com/${fb_id}/about?section=contact-info`);
-  return await page.evaluate((FIELD_MAPPING) => {
+  const result = {};
+  try {
+    await page.waitForSelector('.coverNoImage', {visible: true, timeout: TIMEOUT});
+    result['cover'] = null;
+  } catch (e) {
+    // cover
+    result['cover'] = page.$eval('.coverPhotoImg', e => e.src);
+  }
+
+  const info = await page.evaluate((FIELD_MAPPING) => {
+    const FBID_PATTERN = /a\.\d+\.\d+\.(\d+)/;
     const result = {};
     try {
       // name
       result['name'] = document.querySelector('#fb-timeline-cover-name a').innerText;
       // avatar
-      const avatar = document.querySelector('.profilePicThumb img');
+      const avatarLinkElm = document.querySelector('a.profilePicThumb');
+      const avatar = document.querySelector('a.profilePicThumb img');
+      if (avatarLinkElm) {
+        let matches;
+        if (matches = FBID_PATTERN.exec(avatarLinkElm.getAttribute('href'))) {
+          result['fb_id'] = matches[1];
+        }
+      }
       if (avatar) {
         result['avatar'] = avatar.getAttribute('src');
-      }
-      // cover
-      const cover = document.querySelector('.coverPhotoImg');
-      if (cover) {
-        result['cover'] = cover.getAttribute('src');
       }
       // gender, language
       document.querySelectorAll('.uiList li').forEach(elm => {
@@ -45,10 +57,14 @@ async function getBasicInfo(page, fb_id) {
         console.log(res);
         result['gender'] = res ? (res[1].toLowerCase() === 'he' ? 'Male' : 'Female') : '';
       }
-    } catch (e) { }
-    
+    } catch (e) {
+      console.log(e);
+    }
     return result;
   }, FIELD_MAPPING);
+
+  return {...result, ...info};
+
 }
 
 async function getIntro(page) {
@@ -135,17 +151,20 @@ module.exports.run = async (event, context, callback) => {
 
   console.time('counting');
   const browser = await setup.getBrowser();
-  //const browser = await puppeteer.launch({headless: false, devtools: true});
+  // const browser = await puppeteer.launch({headless: false, devtools: true});
   const page = await browser.newPage();
   if (fb_cookie) {
     await page.setCookie(...fb_cookie);
   }
 
-  let account = await Promise.all([
+  /*let account = await Promise.all([
     getBasicInfo(page, fbid),
     getProfileData(page, fbid)
   ])
-    .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));
+    .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));*/
+
+  let account = await module.exports.getFullUserInfo(page, fbid);
+
 
   let birthday;
   if (birthday = account['birthday']) {
@@ -158,13 +177,18 @@ module.exports.run = async (event, context, callback) => {
   }
   account = { ...event, ... account };
 
-  account['posts'] = await fb_posts.getPosts(page, fbid, 10);
+  account['posts'] = await fb_posts.getPosts(page, fbid, 1);
+  if (account['posts'].length) {
+    account['posts'] = account['posts'].map(post => {
+      return {...post, fb_id: `${account['fb_id']}_${post['fb_id']}`};
+    })
+  }
+
   account['user_name'] = fbid;
   account['fb_id'] = fbid;
 
-  await browser.close();
+  // await browser.close();
   console.timeEnd('counting');
-
   console.log(account);
 
   callback(null, account);
@@ -175,9 +199,9 @@ const params = {
   'influencer_id': 11335,
   'timestamp_last_post_in_db': 0,
   'num_posts': 50,
-  // 'name': 'lehoanganhthyy',
+  'name': 'lehoanganhthyy',
   // name: '100014479202924',
-  name: 'linhchiibi19',
+  // name: 'linhchiibi19',
   'fb_token': null,
   'followers_limit': 300,
 };
