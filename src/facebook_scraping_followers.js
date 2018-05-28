@@ -58,9 +58,9 @@ async function normalizeProfileData(data, fb_account_id, fb_id) {
     }
   }
 
-  if (!data.age && data.avatar) {
+  if (!data.age && data.picture) {
     // do not have age, call azure service
-    const predictData = await utils.predictAgeGender(data.avatar);
+    const predictData = await utils.predictAgeGender(data.picture);
     if (predictData) {
       data.age = predictData.age;
       if (!data.gender) {

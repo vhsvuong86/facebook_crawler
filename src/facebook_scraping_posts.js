@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
 const MAX_NUMBER_POSTS = 10;
 // const PATTERN = /^.*(?:post\/)?(\d+)&.*$/;
 const FBID_PATTERN = /fbid=(\d+)/;
-const TIMEOUT = 3000;
+const TIMEOUT = 5000;
 
 // const REACTION_PATTERN = /(\d*,?\d+)(?=\W+\w+\W+reacted)/;
 const NUMBER_PATTERN = /(\d*,?\d+)/;

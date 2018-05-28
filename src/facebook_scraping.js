@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer');
 const fb_cookie = require('./common/fb_cookie');
 const fb_utils = require('./common/fb_utils');
 const fb_posts = require('./facebook_scraping_posts');
-const TIMEOUT = 3000;
+const TIMEOUT = 5000;
 
 const FIELD_MAPPING = {
   'Gender': 'gender',
@@ -160,6 +160,7 @@ module.exports.run = async (event, context, callback) => {
 
   account['posts'] = await fb_posts.getPosts(page, fbid, 10);
   account['user_name'] = fbid;
+  account['fb_id'] = fbid;
 
   await browser.close();
   console.timeEnd('counting');
