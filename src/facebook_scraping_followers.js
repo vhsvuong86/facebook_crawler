@@ -39,9 +39,9 @@ async function getFacebookPosts(fb_account_id) {
   }  
 }
 
-async function normalizeProfileData(data, fb_account_id, fb_id) {
+async function normalizeProfileData(data, fb_account_id, fb_user_id) {
   data.facebook_account_id = fb_account_id;
-  data.fb_id = fb_id;
+  data.fb_id = fb_user_id;
 
   if (data.gender) {
     data.gender = data.gender.toLowerCase() == 'male' ? 2 : 1;
@@ -58,9 +58,10 @@ async function normalizeProfileData(data, fb_account_id, fb_id) {
     }
   }
 
-  if (!data.age && data.picture) {
+  const picUrl = data.picture || data.avatar;
+  if (!data.age && picUrl) {
     // do not have age, call azure service
-    const predictData = await utils.predictAgeGender(data.picture);
+    const predictData = await utils.predictAgeGender(picUrl);
     if (predictData) {
       data.age = predictData.age;
       if (!data.gender) {
@@ -72,9 +73,14 @@ async function normalizeProfileData(data, fb_account_id, fb_id) {
   return data;
 }
 
-async function scrapeUsersEachPost(page, users, post_id, fb_account_id) {
+async function scrapeUsersEachPost(page, users, post_id, fb_id, fb_account_id) {
   const temp = post_id.split("_");
-  await page.goto(`https://www.facebook.com/${temp[0]}/posts/${temp[1]}`);
+  if (temp.length === 2) {
+    await page.goto(`https://www.facebook.com/${temp[0]}/posts/${temp[1]}`);
+  } else {
+    await page.goto(`https://www.facebook.com/${fb_id}/posts/${temp[0]}`);
+  }
+  
   try {
     await page.waitForSelector('.UFIList', {visible:true, timeout: TIMEOUT});
     await page.click(LIKE_LINK_SELECTOR);
@@ -98,15 +104,15 @@ async function scrapeUsersEachPost(page, users, post_id, fb_account_id) {
 
   // console.log("start users scraping");
   for (let item of items) {
-    const fb_id = utils.stripFbID(item);
-    if (users[fb_id]) {
+    const fb_user_id = utils.stripFbID(item);
+    if (users[fb_user_id]) {
       continue;
     }
-    console.log("user id: ", fb_id);
-    let profile = await fb_scraping.getFullUserInfo(page, fb_id);
+    console.log("user id: ", fb_user_id);
+    let profile = await fb_scraping.getFullUserInfo(page, fb_user_id);
     await page.waitFor(utils.randomTime(100, 500));
     // normalize profile data
-    users[fb_id] = await normalizeProfileData(profile, fb_account_id, fb_id);
+    users[fb_user_id] = await normalizeProfileData(profile, fb_account_id, fb_user_id);
   }
   return users;
 }
@@ -135,6 +141,7 @@ module.exports.run = async (event, context, callback) => {
 
   let users = event.followers || {};
   const fb_account_id = event.facebook_account_id;
+  const fb_id = event.fb_id;
 
   let posts;
   const post = event.post;
@@ -155,7 +162,7 @@ module.exports.run = async (event, context, callback) => {
   console.log(posts);
   for (let post of posts) {
     rotate_index = await updateCookie(page, rotate_index);
-    users = await scrapeUsersEachPost(page, users, post, fb_account_id);
+    users = await scrapeUsersEachPost(page, users, post, fb_id, fb_account_id);
     console.log("done post", post);
     await page.waitFor(utils.randomTime(100, 1000));
   }
