@@ -13,7 +13,6 @@ const FIELD_MAPPING = {
   'Birthday': 'birthday',
 };
 
-
 async function getBasicInfo(page, fb_id) {
   await page.goto(`https://www.facebook.com/${fb_id}/about?section=contact-info`);
   const result = {};
@@ -22,7 +21,12 @@ async function getBasicInfo(page, fb_id) {
     result['cover'] = null;
   } catch (e) {
     // cover
-    result['cover'] = await page.$eval('.coverPhotoImg', e => e.src);
+    try {
+      await page.waitForSelector('.coverPhotoImg', {visible: true, timeout: TIMEOUT});
+      result['cover'] = await page.$eval('.coverPhotoImg', e => e.src);
+    } catch (ex) {
+      result['cover'] = null;
+    }
   }
 
   const info = await page.evaluate((FIELD_MAPPING) => {
@@ -150,7 +154,7 @@ module.exports.run = async (event, context, callback) => {
    */
 
   context.callbackWaitsForEmptyEventLoop = false;
-  process.setMaxListeners(0);
+  process.setMaxListeners(Number.MAX_SAFE_INTEGER);
 
   const fbid = event.name;
 
@@ -162,15 +166,7 @@ module.exports.run = async (event, context, callback) => {
     await page.setCookie(...fb_cookie);
   }
 
-  /*let account = await Promise.all([
-    getBasicInfo(page, fbid),
-    getProfileData(page, fbid)
-  ])
-    .then(([basicInfo, profile]) => ({...basicInfo, ...profile}));*/
-
   let account = await module.exports.getFullUserInfo(page, fbid);
-
-
   let birthday;
   if (birthday = account['birthday']) {
     account['birthday'] = +(new Date(birthday));
@@ -204,9 +200,11 @@ const params = {
   'influencer_id': 11335,
   'timestamp_last_post_in_db': 0,
   'num_posts': 50,
-  'name': 'lehoanganhthyy',
-  // name: '100014479202924',
-  // name: 'linhchiibi19',
+  // 'name': 'gialinhnguyen2511',
+  // 'name: 'peso.dev',
+  // 'name': 'lehoanganhthyy',
+  // 'name': '100014479202924',
+  'name': 'linhchiibi19',
   'fb_token': null,
   'followers_limit': 300,
 };

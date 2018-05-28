@@ -90,6 +90,34 @@ async function triggerLoadReactionData(page, selector) {
   }, selector);
 }
 
+async function closePopup(page) {
+  await page.evaluate(() => {
+    const closeBtn = [...document.querySelectorAll('a > i > u')]
+      .find(e => e.innerText.toLowerCase() === 'close');
+    if (closeBtn) {
+      closeBtn.click();
+    }
+  })
+}
+
+async function fetchComment(page) {
+  try {
+    await page.waitForFunction(() => {
+      const paging = document.querySelector('.UFIPagerLink');
+      if (paging) {
+        paging.click();
+        return false;
+      } else {
+        return true;
+      }
+    }, {timeout: TIMEOUT * 2});
+  } catch (e) {}
+  return await page.evaluate(() => {
+    const comments = [...document.querySelectorAll('.UFICommentActorName')];
+    return comments.filter(e => !e.closest('.UFIReplyList')).length;
+  })
+}
+
 async function getPostDetail(page, postId) {
   let result = {fb_id: postId};
   const reactionPromise$ = new Promise((resolve) => {
@@ -174,11 +202,9 @@ async function getPostDetail(page, postId) {
 
   try {
     await page.waitForFunction(async() => {
-      return await page.evaluate(() => {
-        const pattern = /(\d+) Comment(:?s?)/;
-        const elms = [...document.querySelector('div > span')];
-        return !!elms.find(e => pattern.exec(e.innerText));
-      });
+      const elms = [...document.querySelectorAll('div > span')];
+      const pattern = /(\d+) Comment(:?s?)/;
+      return !!elms.find(e => pattern.exec(e.innerText));
     }, {timeout: TIMEOUT});
     promises.push(commentPromise$.then(comment => ({comments_old: comment})));
     // trigger load comment
@@ -188,13 +214,22 @@ async function getPostDetail(page, postId) {
     result['comments_old'] = 0;
   }
 
-  return await Promise.all(promises)
+  const info = await Promise.all(promises)
     .then(data => {
       data.forEach((item) => {
         result = {...result, ...item};
       });
       return result;
     });
+
+  if (!info.comments_old) {
+    await closePopup(page);
+    // FIXME: try to get comments
+    info['comments_old'] = await fetchComment(page);
+  }
+
+  return info;
+
 }
 
 module.exports.getPosts = async function(page, fbid, num_posts) {
