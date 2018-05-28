@@ -17,7 +17,7 @@ function formatNumber(value) {
   if (data = value.match(NUMBER_PATTERN)) {
     return +(data[0].replace(',', ''));
   }
-  return str;
+  return value;
 }
 
 function getPostId(url) {
@@ -25,7 +25,7 @@ function getPostId(url) {
   return data && data[1];
 }
 
-async function scrape(page, fbid, itemTargetCount = 40, scrollDelay = 500) {
+async function scrape(page, fbid, itemTargetCount = 40, scrollDelay = 1000) {
   await page.goto(`https://www.facebook.com/${fbid}`);
   let items = [];
   try {
@@ -130,6 +130,7 @@ async function getPostDetail(page, postId) {
           resolve(0);
         }
       }
+
     });
   });
 
@@ -156,10 +157,10 @@ async function getPostDetail(page, postId) {
 
   try {
     await page.waitForSelector(reactionLink, {visible: true, timeout: TIMEOUT});
-    promises.push(reactionPromise$.then(like => ({likes: formatNumber(like)})));
+    promises.push(reactionPromise$.then(like => ({likes_old: formatNumber(like)})));
     await triggerLoadReactionData(page, reactionLink);
   } catch (e) {
-    result['links'] = 0;
+    result['likes_old'] = 0;
   }
 
   try {
@@ -178,12 +179,12 @@ async function getPostDetail(page, postId) {
         return !!elms.find(e => pattern.exec(e.innerText));
       });
     }, {timeout: TIMEOUT});
-    promises.push(commentPromise$.then(comment => ({comments: comment})));
+    promises.push(commentPromise$.then(comment => ({comments_old: comment})));
     // trigger load comment
     await triggerLoadCommentData(page);
   } catch (e) {
     // no comments
-    result['comments'] = 0;
+    result['comments_old'] = 0;
   }
 
   return await Promise.all(promises)

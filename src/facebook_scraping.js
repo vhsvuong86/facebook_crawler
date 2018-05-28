@@ -28,7 +28,7 @@ async function getBasicInfo(page, fb_id) {
       // cover
       const cover = document.querySelector('.coverPhotoImg');
       if (cover) {
-        result['cover'] = cover.src;
+        result['cover'] = cover.getAttribute('src');
       }
       // gender, language
       document.querySelectorAll('.uiList li').forEach(elm => {
@@ -93,7 +93,7 @@ async function getProfilePicture(page) {
     await page.waitForSelector(selector, {visible: true, timeout: TIMEOUT});
     await page.waitForFunction(function () {
       const image = document.querySelector('div.uiLayer img');
-      return image && image.src && !image.src.endsWith('.gif');
+      return image && image.src && image.src.indexOf('scontent') > -1;
     }, {timeout: TIMEOUT});
     return await page.$eval('div.uiLayer img', e => e.src);
   } catch (e) {
@@ -104,7 +104,8 @@ async function getProfilePicture(page) {
 
 async function getProfileData(page, fbid) {
   await page.goto(`https://www.facebook.com/${fbid}`, {waitUntil: 'networkidle2'});
-  const [picture, intro] = await Promise.all([getProfilePicture(page), getIntro(page)]);
+  const picture = await getProfilePicture(page);
+  const intro = await getIntro(page);
   return {...intro, picture};
 }
 
@@ -128,17 +129,18 @@ module.exports.run = async (event, context, callback) => {
    */
 
   context.callbackWaitsForEmptyEventLoop = false;
-  process.setMaxListeners(Infinity);
+  process.setMaxListeners(0);
 
   const fbid = event.name;
 
   console.time('counting');
-  // const browser = await setup.getBrowser();
-  const browser = await puppeteer.launch({headless: false});
+  const browser = await setup.getBrowser();
+  //const browser = await puppeteer.launch({headless: false, devtools: true});
   const page = await browser.newPage();
   if (fb_cookie) {
     await page.setCookie(...fb_cookie);
   }
+
   let account = await Promise.all([
     getBasicInfo(page, fbid),
     getProfileData(page, fbid)
@@ -154,9 +156,9 @@ module.exports.run = async (event, context, callback) => {
   if (followers = account['followers']) {
     account['followers'] = +followers;
   }
-  account = { ...account, ...event };
+  account = { ...event, ... account };
 
-  account['posts'] = await fb_posts.getPosts(page, fbid);
+  account['posts'] = await fb_posts.getPosts(page, fbid, 10);
   account['user_name'] = fbid;
 
   await browser.close();
@@ -172,13 +174,15 @@ const params = {
   'influencer_id': 11335,
   'timestamp_last_post_in_db': 0,
   'num_posts': 50,
-  'name': 'boon.trang.1',
+  // 'name': 'lehoanganhthyy',
+  // name: '100014479202924',
+  name: 'linhchiibi19',
   'fb_token': null,
   'followers_limit': 300,
 };
 
-(async function () {
+/*(async function () {
   await module.exports.run(params, {}, (data) => {
     console.log(data);
   });
-})();
+})();*/
