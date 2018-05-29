@@ -7,7 +7,7 @@ provider:
   region: ${file(./stages/${opt:stage}.yaml):REGION}
   runtime: nodejs8.10
   role: arn:aws:iam::199811994466:role/casting-asia
-  memorySize: 1536
+  memorySize: 1000
   timeout: 300
   endpointType: regional
   logRetentionInDays: ${file(./stages/${opt:stage}.yaml):LOG_RETENTION}

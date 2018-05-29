@@ -169,6 +169,14 @@ module.exports.run = async (event, context, callback) => {
   let account = await module.exports.getFullUserInfo(page, fbid);
   let birthday;
   if (birthday = account['birthday']) {
+    try {
+      if (birthday.split(" ").length == 3) {
+        const timediff = +(new Date()) - +(new Date(birthday));
+        account["age"] = parseInt(timediff / (1000*3600*24*365));        
+      }
+    } catch (e) {
+      console.log("Getting errors: " + e.message);
+    }
     account['birthday'] = +(new Date(birthday));
   }
 
@@ -186,7 +194,10 @@ module.exports.run = async (event, context, callback) => {
   }
 
   account['user_name'] = fbid;
-  //account['fb_id'] = fbid;
+  if (account['fb_id'] === undefined) {
+    // make sure other lambda not break
+    account['fb_id'] = fbid;
+  }
 
   await browser.close();
   console.timeEnd('counting');
