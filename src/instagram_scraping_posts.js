@@ -4,6 +4,7 @@ const setup = require('./starter-kit/setup');
 const utils = require('./common/utils');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
+const rimraf = require('rimraf');
 
 const SELECT_LOGIN_SELECTOR = "._g9ean a";
 const BUTTON_LOGIN_SELECTOR = "button._qv64e";
@@ -133,7 +134,7 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
 
 module.exports.run = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
-
+  
   console.time('counting');
   const browser = await setup.getBrowser();
   const page = await browser.newPage();
@@ -202,7 +203,16 @@ module.exports.run = async (event, context, callback) => {
 
   await browser.close();
   console.timeEnd('counting'); 
+  console.log(info);
 
+  // remove /tmp folder to have enough space to run
+  try {
+    rimraf.sync('/tmp');
+    console.log("Removed /tmp");
+  } catch (e) {
+    console.log("Getting errors: " + e.message);
+  }
+  
   callback(null, info);
 };
 
