@@ -6,8 +6,8 @@ const utils = require('./common/utils');
 const fb_rotate = require('./common/fb_rotate');
 const fb_scraping = require('./facebook_scraping');
 
-const MAX_NUMBER_USERS = 10;
-const MAX_NUMBER_POSTS = 10;
+const MAX_NUMBER_USERS = 15;
+const MAX_NUMBER_POSTS = 12;
 const TIMEOUT = 3000;
 const LIKE_LINK_SELECTOR = "a[href*='reaction/profile']._2x4v";
 const REACTION_LIST_SELECTOR = "#reaction_profile_browser";
@@ -73,7 +73,7 @@ async function normalizeProfileData(data, fb_account_id, fb_user_id) {
   return data;
 }
 
-async function scrapeUsersEachPost(page, users, post_id, fb_id, fb_account_id) {
+async function scrapeUsersEachPost(page, followers, post_id, fb_id, fb_account_id) {
   const temp = post_id.split("_");
   if (temp.length === 2) {
     await page.goto(`https://www.facebook.com/${temp[0]}/posts/${temp[1]}`);
@@ -86,7 +86,7 @@ async function scrapeUsersEachPost(page, users, post_id, fb_id, fb_account_id) {
     await page.click(LIKE_LINK_SELECTOR);
     await page.waitForSelector(REACTION_LIST_SELECTOR, {visible:true, timeout: TIMEOUT});    
   } catch (e) {
-    return users;
+    return {};
   }
 
   await page.waitFor(utils.randomTime(100, 2000));
@@ -103,9 +103,11 @@ async function scrapeUsersEachPost(page, users, post_id, fb_id, fb_account_id) {
   }, selector, MAX_NUMBER_USERS);
 
   // console.log("start users scraping");
+  let users ={};
   for (let item of items) {
     const fb_user_id = utils.stripFbID(item);
-    if (users[fb_user_id]) {
+    if (followers[fb_user_id]) {
+      // exist, no need to process again
       continue;
     }
     console.log("user id: ", fb_user_id);
@@ -136,10 +138,10 @@ module.exports.run = async (event, context, callback) => {
   const page = await browser.newPage();
   page.setViewport({width: 1200, height: 1000});
 
-  let rotate_index = 0;
+  let rotate_index = Math.floor(Math.random() * 4);
   //if (fb_cookie) { await page.setCookie(...fb_cookie); }
 
-  let users = event.followers || {};
+  const followers = event.followers || {};
   const fb_account_id = event.facebook_account_id;
   const fb_id = event.fb_id;
 
@@ -160,9 +162,13 @@ module.exports.run = async (event, context, callback) => {
   }
 
   console.log(posts);
+  let users = {};
+
+  // current only scrap one post as one time
   for (let post of posts) {
+    console.log("start post, rotate index: ", rotate_index);
     rotate_index = await updateCookie(page, rotate_index);
-    users = await scrapeUsersEachPost(page, users, post, fb_id, fb_account_id);
+    users = await scrapeUsersEachPost(page, followers, post, fb_id, fb_account_id);
     console.log("done post", post);
     await page.waitFor(utils.randomTime(100, 1000));
   }

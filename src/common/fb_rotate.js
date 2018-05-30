@@ -19,5 +19,6 @@ DATA = [
 
 
 module.exports.getCookieInfo = (index = 0) => {
-  return [(index + 1) % DATA.length, DATA[index]];
+  const idx = index % DATA.length;
+  return [(idx + 1) % DATA.length, DATA[idx]];
 }

@@ -4,8 +4,9 @@ const puppeteer = require('puppeteer');
 const fb_cookie = require('./common/fb_cookie');
 const fb_utils = require('./common/fb_utils');
 const fb_posts = require('./facebook_scraping_posts');
+const utils = require('./common/utils');
 const TIMEOUT = 5000;
-const MAX_NUMBER_POSTS = 10;
+const MAX_NUMBER_POSTS = 12;
 
 const FIELD_MAPPING = {
   'Gender': 'gender',
@@ -185,6 +186,18 @@ module.exports.run = async (event, context, callback) => {
     account['followers'] = +followers;
   }
   account = { ...event, ... account };
+
+  if (!account.age) {
+    // still not get age?
+    const picUrl = account.picture || account.avatar;
+    const predictData = await utils.predictAgeGender(picUrl);
+    if (predictData) {
+      account.age = predictData.age;
+      if (!account.gender) {
+        account.gender = predictData.gender == "male" ? 2 : 1;
+      }
+    }    
+  }
 
   account['posts'] = await fb_posts.getPosts(page, fbid, MAX_NUMBER_POSTS);
   if (account['posts'].length) {
