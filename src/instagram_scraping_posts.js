@@ -77,7 +77,11 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
   const content = await page.content();
   const $ = cheerio.load(content);
   try {
-    const data = $("body").find("script")[0].children[0].data.replace("window._sharedData = ", "").replace(";", "");
+    let data = $("body").find("script")[0].children[0].data.replace("window._sharedData = ", "");
+    if (data[data.length-1] === ";") {
+      data = data.substring(0, data.length - 1);
+    }
+
     const user_data = JSON.parse(data);
     const user = user_data.entry_data.ProfilePage[0].graphql.user;
 
@@ -217,5 +221,14 @@ module.exports.run = async (event, context, callback) => {
 };
 
 
+// (async function () {
+//   const browser = await puppeteer.launch({headless: false, devtools: true});
+//   const page = await browser.newPage();
+//   page.setViewport({width: 1200, height: 1000});
+//   await page.setCookie(...savedCookie);
 
+//   let posts = [];
+//   let info = await scrapePosts(page, posts, "alyssa13ramos", MAX_NUMBER_POSTS);
+//   console.log(info);
+// })();
 
