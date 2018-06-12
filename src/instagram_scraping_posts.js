@@ -84,6 +84,7 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
 
     const user_data = JSON.parse(data);
     const user = user_data.entry_data.ProfilePage[0].graphql.user;
+    picUrl = user.profile_pic_url_hd;
 
     Object.assign(info, {
       followers: user.edge_followed_by.count,
@@ -129,8 +130,12 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
   // info.avgComments = sumComments/posts.length;
 
   // predict gender and age
-  // const predictData = await utils.predictAgeGender(picUrl);
-  // Object.assign(info, predictData);
+  if (picUrl) {
+    const predictData = await utils.predictAgeGender(picUrl);
+    if (predictData) {
+      info.age = predictData.age;
+    }
+  }
 
   return info;
 }
