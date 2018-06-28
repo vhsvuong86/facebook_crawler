@@ -90,7 +90,7 @@ async function scrapePosts(page, posts, username, itemTargetCount) {
       followers: user.edge_followed_by.count,
       avatar: user.profile_pic_url_hd,
       id: user.id,
-      name: user.full_name,
+      name: user.full_name || username,
       introduce: user.biography
     });
 
