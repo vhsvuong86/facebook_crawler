@@ -51,7 +51,14 @@ functions:
     #         origin: "*"
   facebook-scraping-followers:
     handler: src/facebook_scraping_followers.run
-
+  facebook-scraping-post-content:
+    handler: src/facebook_scraping_post_content.run
+    # events:
+    #   - http:
+    #     path: facebook/{campaign_id}/posts
+    #      method: get
+    #      cors:
+    #        origin: "*"
 
 package:
   artifact: ./package.zip
